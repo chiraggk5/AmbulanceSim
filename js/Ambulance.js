@@ -130,12 +130,33 @@ export class Ambulance {
     }
 
     startSiren() {
-        if (this.sirenSound && this.sirenSound.buffer && !this.sirenSound.isPlaying) {
+    if (this.sirenSound && this.sirenSound.buffer && !this.sirenSound.isPlaying) {
+        // --- BEGIN AUTOPLAY FIX ---
+        const listener = this.sirenSound.listener; // THREE.AudioListener
+        if (listener && listener.context.state === 'suspended') {
+            listener.context.resume().then(() => {
+                console.log("AudioContext resumed successfully by user gesture (or was already running).");
+                this.sirenSound.play();
+                const sirenStatusEl = document.getElementById('sirenStatus');
+                if(sirenStatusEl) sirenStatusEl.textContent = 'Playing';
+            }).catch(e => console.error("Error resuming AudioContext:", e));
+        } else if (listener && listener.context.state === 'running') {
+             this.sirenSound.play();
+             const sirenStatusEl = document.getElementById('sirenStatus');
+             if(sirenStatusEl) sirenStatusEl.textContent = 'Playing';
+        } else {
+            // Fallback or if context is in a weird state - try playing directly
+            // but this might be blocked if context was never started by user.
+            console.warn("AudioContext state is not 'suspended' or 'running', attempting to play anyway. State: " + (listener ? listener.context.state : "unknown"));
             this.sirenSound.play();
             const sirenStatusEl = document.getElementById('sirenStatus');
             if(sirenStatusEl) sirenStatusEl.textContent = 'Playing';
         }
+        // --- END AUTOPLAY FIX ---
+    } else if (this.sirenSound && !this.sirenSound.buffer) {
+         console.warn("Siren sound buffer not loaded yet.");
     }
+}
 
     stopSiren() {
         if (this.sirenSound && this.sirenSound.isPlaying) {
